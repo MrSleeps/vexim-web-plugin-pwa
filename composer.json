@@ -1,0 +1,82 @@
+{
+    "name": "mrsleeps/vexim-web-plugin-pwa",
+    "description": "PWA plugin for VExim Web UI",
+    "type": "plugin",
+    "require": {
+        "php": "^8.2|^8.3",
+        "laravel/framework": "^11.0|^12.0|^13.x-dev",
+        "spatie/laravel-permission": "^6.0|^7.0|^8.x-dev",
+        "filament/filament": "^3.0|^4.0|^5.x-dev"
+    },
+    "require-dev": {
+        "orchestra/testbench": "^9.0|^10.0",
+        "phpunit/phpunit": "^10.0|^11.0",
+        "laravel/pint": "^1.0"
+    },
+    "license": "GPL-3.0-only",
+    "authors": [
+        {
+            "name": "Mr Sleeps",
+            "email": "mr.sleeps@example.com",
+            "role": "Developer"
+        }
+    ],
+    "autoload": {
+        "psr-4": {
+            "VEximweb\\Plugin\\PWA\\": "src/"
+        }
+    },
+    "autoload-dev": {
+        "psr-4": {
+            "VEximweb\\Plugin\\PWA\\Tests\\": "tests/"
+        }
+    },
+    "extra": {
+        "laravel": {
+            "providers": [
+                "VEximweb\\Plugin\\PWA\\Providers\\PWAServiceProvider"
+            ]
+        },
+        "branch-alias": {
+            "dev-main": "1.0.x-dev"
+        },
+        "plugin": {
+            "name": "VExim Web UI PWA Plugin",
+            "version": "1.0.0",
+            "namespace": "VEximweb\\Plugin\\PWA"
+        }
+    },
+    "minimum-stability": "dev",
+    "prefer-stable": true,
+    "config": {
+        "optimize-autoloader": true,
+        "sort-packages": true,
+        "allow-plugins": {
+            "php-http/discovery": true
+        }
+    },
+    "scripts": {
+        "post-autoload-dump": [
+            "Illuminate\\Foundation\\ComposerScripts::postAutoloadDump",
+            "@php artisan package:discover --ansi"
+        ],
+        "test": "vendor/bin/phpunit",
+        "test-coverage": "vendor/bin/phpunit --coverage-html coverage",
+        "pint": "vendor/bin/pint",
+        "analyse": "vendor/bin/phpstan analyse",
+        "post-install-cmd": [
+            "@php artisan vendor:publish --tag=pwa-migrations --force"
+        ],
+        "post-update-cmd": [
+            "@php artisan vendor:publish --tag=pwa-migrations --force"
+        ]
+    },
+    "scripts-descriptions": {
+        "test": "Run all tests",
+        "test-coverage": "Run tests with coverage report",
+        "pint": "Run Laravel Pint to fix code style",
+        "analyse": "Run PHPStan static analysis",
+        "post-install-cmd": "Publish PWA migrations after installation",
+        "post-update-cmd": "Publish PWA migrations after update"
+    }
+}

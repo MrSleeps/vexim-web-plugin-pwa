@@ -131,35 +131,21 @@ self.addEventListener('fetch', function(event) {
     }
 
     event.respondWith(
-        caches.match(event.request).then(function(cachedResponse) {
-            if (cachedResponse) {
-                // Return cached response
-                return cachedResponse;
-            }
-
-            // Try network
-            return fetch(event.request)
-                .then(function(networkResponse) {
-                    // Check if we should cache this response
-                    if (networkResponse && networkResponse.status === 200) {
-                        const responseToCache = networkResponse.clone();
-                        caches.open(CACHE_NAME)
-                            .then(function(cache) {
-                                cache.put(event.request, responseToCache);
-                            })
-                            .catch(function(err) {
-                                console.warn('Service Worker: Failed to cache:', err);
-                            });
-                    }
-                    return networkResponse;
-                })
-                .catch(function() {
-                    // Offline fallback
-                    return new Response('Offline - Please check your internet connection', {
+        fetch(event.request)
+            .then(function(networkResponse) {
+                if (networkResponse && networkResponse.status === 200) {
+                    const responseToCache = networkResponse.clone();
+                    caches.open(CACHE_NAME).then(cache => cache.put(event.request, responseToCache));
+                }
+                return networkResponse;
+            })
+            .catch(function() {
+                return caches.match(event.request).then(function(cachedResponse) {
+                    return cachedResponse || new Response('Offline - Please check your internet connection', {
                         status: 503,
                         statusText: 'Service Unavailable'
                     });
                 });
-        })
+            })
     );
 });

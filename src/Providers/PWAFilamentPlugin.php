@@ -6,6 +6,7 @@ use Filament\Contracts\Plugin;
 use Filament\Panel;
 use Illuminate\Support\Facades\View;
 use VEximweb\Core\Data\Repositories\SettingRepository;
+use VEximweb\Plugin\PWA\Filament\Resources\PwaSettingsResource;
 
 class PWAFilamentPlugin implements Plugin
 {
@@ -36,6 +37,11 @@ class PWAFilamentPlugin implements Plugin
 
         \Log::info('PWA: Registering plugin with panel: ' . $panel->getId());
 
+        // Register the settings resource
+        $panel->resources([
+            PwaSettingsResource::class,
+        ]);
+
         // Register render hooks
         $this->registerRenderHooks($panel);
 
@@ -52,7 +58,8 @@ class PWAFilamentPlugin implements Plugin
     {
         try {
             $this->settings = $this->settingRepository->getAll();
-        } catch (\Exception $e) {
+        } catch (\Throwable $e) {
+            \Log::error('PWA: Failed to load settings: ' . $e->getMessage());
             $this->settings = [];
         }
     }
@@ -65,7 +72,7 @@ class PWAFilamentPlugin implements Plugin
     protected function registerRenderHooks(Panel $panel): void
     {
         \Log::info('PWA: Registering render hooks for panel: ' . $panel->getId());
-        
+
         // Head section
         $panel->renderHook(
             'panels::head.start',
@@ -93,9 +100,14 @@ class PWAFilamentPlugin implements Plugin
 
         $this->loadSettings();
 
+        // Note: catches \Throwable, not just \Exception. PHP 8+ errors like
+        // "Undefined constant" are thrown as \Error, which does NOT extend
+        // \Exception — a catch(\Exception) here would let them propagate
+        // uncaught straight out of this render hook, potentially crashing
+        // the entire panel page mid-render. \Throwable covers both.
         try {
             return view('pwa::filament.head', ['settings' => $this->settings])->render();
-        } catch (\Exception $e) {
+        } catch (\Throwable $e) {
             \Log::error('PWA: Failed to render head: ' . $e->getMessage());
             return '';
         }
@@ -111,7 +123,7 @@ class PWAFilamentPlugin implements Plugin
 
         try {
             return view('pwa::filament.body', ['settings' => $this->settings])->render();
-        } catch (\Exception $e) {
+        } catch (\Throwable $e) {
             \Log::error('PWA: Failed to render body: ' . $e->getMessage());
             return '';
         }
@@ -127,9 +139,36 @@ class PWAFilamentPlugin implements Plugin
 
         try {
             return view('pwa::filament.scripts', ['settings' => $this->settings])->render();
-        } catch (\Exception $e) {
+        } catch (\Throwable $e) {
             \Log::error('PWA: Failed to render scripts: ' . $e->getMessage());
             return '';
         }
+    }
+
+    /**
+     * Get all PWA settings (useful for other parts of the plugin)
+     */
+    public function getSettings(): array
+    {
+        $this->loadSettings();
+        return $this->settings;
+    }
+
+    /**
+     * Get a specific setting
+     */
+    public function getSetting(string $key, $default = null)
+    {
+        $this->loadSettings();
+        return $this->settings[$key] ?? $default;
+    }
+
+    /**
+     * Clear the settings cache
+     */
+    public function clearCache(): void
+    {
+        $this->settingRepository->clearCache();
+        $this->loadSettings();
     }
 }

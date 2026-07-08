@@ -3,7 +3,8 @@
 namespace VEximweb\Plugin\PWA\Providers;
 
 use Illuminate\Support\ServiceProvider;
-use Illuminate\Support\Facades\View;
+use Illuminate\Support\Facades\Blade;
+use Filament\Panel;
 use VEximweb\Core\Data\Repositories\SettingRepository;
 
 class PWAServiceProvider extends ServiceProvider
@@ -14,6 +15,32 @@ class PWAServiceProvider extends ServiceProvider
             \VEximweb\Core\Data\Repositories\Interfaces\SettingRepositoryInterface::class,
             SettingRepository::class
         );
+
+        // Register the plugin with the 'vexim' panel BEFORE Filament builds
+        // that panel's routes. This must happen in register(), not boot(),
+        // because Filament's own provider builds resource routes during its
+        // boot() phase — by the time our boot() (or app->booted()) runs,
+        // the panel's route group has already executed and adding the
+        // resource afterwards has no effect on routing.
+        Panel::configureUsing(function (Panel $panel) {
+            if ($panel->getId() !== 'vexim') {
+                return;
+            }
+
+            // Resolve settings lazily inside the closure — this runs later,
+            // when Filament actually constructs the panel, so it's safe even
+            // if config/DB state isn't fully ready during our own register().
+            $settingRepository = $this->app->make(SettingRepository::class);
+
+            if (!filter_var($settingRepository->get('pwa_enabled', true), FILTER_VALIDATE_BOOLEAN)) {
+                \Log::info('PWA: PWA is disabled, skipping plugin registration');
+                return;
+            }
+
+            \Log::info('PWA: Registering plugin with panel via configureUsing: ' . $panel->getId());
+
+            $panel->plugin(new PWAFilamentPlugin($settingRepository));
+        });
     }
 
     public function boot(): void
@@ -21,7 +48,7 @@ class PWAServiceProvider extends ServiceProvider
         \Log::info('PWA: Service provider booting');
 
         // Load migrations
-        $this->loadMigrationsFrom(__DIR__ . '/../../database/Migrations');
+        $this->loadMigrationsFrom(__DIR__ . '/../../database/migrations');
 
         // Load routes
         $this->loadRoutesFrom(__DIR__ . '/../routes/web.php');
@@ -29,7 +56,7 @@ class PWAServiceProvider extends ServiceProvider
         // Load views
         $viewPath = __DIR__ . '/../resources/views';
         \Log::info('PWA: Loading views from: ' . $viewPath);
-        
+
         if (is_dir($viewPath)) {
             $this->loadViewsFrom($viewPath, 'pwa');
             \Log::info('PWA: Views loaded successfully');
@@ -43,117 +70,22 @@ class PWAServiceProvider extends ServiceProvider
         // Register Blade directives
         $this->registerBladeDirectives();
 
-        // Register the plugin with the Filament panel
-        $this->registerWithFilamentPanel();
-    }
-
-    /**
-     * Register the PWA plugin with the Filament panel.
-     */
-    protected function registerWithFilamentPanel(): void
-    {
-        // Method 1: Register when the app is fully booted
-        $this->app->booted(function () {
-            \Log::info('PWA: App booted, registering with Filament panel...');
-            $this->registerPluginWithFilament();
-        });
-
-        // Method 2: Also try when filament is being resolved
-        $this->app->resolving('filament', function ($app) {
-            \Log::info('PWA: Filament resolving, registering plugin...');
-            $this->registerPluginWithFilament();
-        });
-
-        // Method 3: Try to find the panel directly
-        $this->registerPluginWithFilament();
-    }
-
-    /**
-     * Register the plugin with Filament panels.
-     */
-    protected function registerPluginWithFilament(): void
-    {
-        try {
-            // Check if Filament is available
-            if (!class_exists('Filament\Facades\Filament')) {
-                \Log::warning('PWA: Filament not available');
-                return;
-            }
-
-            // Try to get the 'vexim' panel directly (since that's your panel's ID)
-            try {
-                $panel = \Filament\Facades\Filament::getPanel('vexim');
-                if ($panel) {
-                    \Log::info('PWA: Found vexim panel, registering plugin...');
-                    $this->registerPluginWithPanel($panel);
-                    return;
-                }
-            } catch (\Exception $e) {
-                \Log::warning('PWA: Could not get vexim panel: ' . $e->getMessage());
-            }
-
-            // If that fails, try to get all panels
-            $panels = \Filament\Facades\Filament::getPanels();
-            
-            if (empty($panels)) {
-                \Log::warning('PWA: No Filament panels found');
-                return;
-            }
-
-            \Log::info('PWA: Found ' . count($panels) . ' Filament panels');
-            
-            foreach ($panels as $panel) {
-                $this->registerPluginWithPanel($panel);
-            }
-        } catch (\Exception $e) {
-            \Log::error('PWA: Failed to register with Filament: ' . $e->getMessage());
-        }
-    }
-
-    /**
-     * Register the plugin with a specific panel.
-     */
-    protected function registerPluginWithPanel($panel): void
-    {
-        try {
-            // Check if PWA is enabled
-            $settings = app(SettingRepository::class);
-            if (!filter_var($settings->get('pwa_enabled', true), FILTER_VALIDATE_BOOLEAN)) {
-                \Log::info('PWA: PWA is disabled, skipping plugin registration');
-                return;
-            }
-
-            // Check if plugin is already registered
-            $plugins = $panel->getPlugins();
-            foreach ($plugins as $plugin) {
-                if ($plugin->getId() === 'pwa') {
-                    \Log::info('PWA: Plugin already registered with panel');
-                    return;
-                }
-            }
-
-            // Register the plugin
-            $panel->plugin(new PWAFilamentPlugin(
-                app(SettingRepository::class)
-            ));
-            
-            \Log::info('PWA: Plugin registered successfully with panel: ' . $panel->getId());
-        } catch (\Exception $e) {
-            \Log::error('PWA: Failed to register plugin with panel: ' . $e->getMessage());
-        }
+        // NOTE: Filament panel/plugin registration now happens in register()
+        // via Panel::configureUsing(). Do not re-add booted()/resolving()
+        // hooks here — see the comment above for why that doesn't work.
     }
 
     protected function registerBladeDirectives(): void
     {
-        \Illuminate\Support\Facades\Blade::directive('pwaHead', function () {
+        Blade::directive('pwaHead', function () {
             return "<?php echo app(\VEximweb\Plugin\PWA\Providers\PWAFilamentPlugin::class)->renderHead(); ?>";
         });
 
-        \Illuminate\Support\Facades\Blade::directive('pwaBody', function () {
+        Blade::directive('pwaBody', function () {
             return "<?php echo app(\VEximweb\Plugin\PWA\Providers\PWAFilamentPlugin::class)->renderBody(); ?>";
         });
 
-        \Illuminate\Support\Facades\Blade::directive('pwaScripts', function () {
+        Blade::directive('pwaScripts', function () {
             return "<?php echo app(\VEximweb\Plugin\PWA\Providers\PWAFilamentPlugin::class)->renderScripts(); ?>";
         });
     }

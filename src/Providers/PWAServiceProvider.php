@@ -37,15 +37,12 @@ class PWAServiceProvider extends ServiceProvider
                 return;
             }
 
-            \Log::info('PWA: Registering plugin with panel via configureUsing: ' . $panel->getId());
-
             $panel->plugin(new PWAFilamentPlugin($settingRepository));
         });
     }
 
     public function boot(): void
     {
-        \Log::info('PWA: Service provider booting');
 
         // Load migrations
         $this->loadMigrationsFrom(__DIR__ . '/../../database/migrations');
@@ -55,11 +52,9 @@ class PWAServiceProvider extends ServiceProvider
 
         // Load views
         $viewPath = __DIR__ . '/../resources/views';
-        \Log::info('PWA: Loading views from: ' . $viewPath);
 
         if (is_dir($viewPath)) {
             $this->loadViewsFrom($viewPath, 'pwa');
-            \Log::info('PWA: Views loaded successfully');
         }
 
         // Publish views

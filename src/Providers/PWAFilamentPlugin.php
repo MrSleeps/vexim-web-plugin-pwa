@@ -35,8 +35,6 @@ class PWAFilamentPlugin implements Plugin
             return;
         }
 
-        \Log::info('PWA: Registering plugin with panel: ' . $panel->getId());
-
         // Register the settings resource
         $panel->resources([
             PwaSettingsResource::class,
@@ -46,7 +44,6 @@ class PWAFilamentPlugin implements Plugin
         $this->registerRenderHooks($panel);
 
         static::$registered = true;
-        \Log::info('PWA: Plugin registration complete');
     }
 
     public function boot(Panel $panel): void
@@ -71,8 +68,6 @@ class PWAFilamentPlugin implements Plugin
 
     protected function registerRenderHooks(Panel $panel): void
     {
-        \Log::info('PWA: Registering render hooks for panel: ' . $panel->getId());
-
         // Head section
         $panel->renderHook(
             'panels::head.start',

@@ -1,6 +1,6 @@
 <?php
 
-namespace Vexim\PWA\Services;
+namespace VEximweb\Plugin\PWA\Services;
 
 use VEximweb\Core\Data\Repositories\SettingRepository;
 use Illuminate\Support\Collection;

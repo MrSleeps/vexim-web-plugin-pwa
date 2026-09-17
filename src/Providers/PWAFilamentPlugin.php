@@ -12,7 +12,6 @@ class PWAFilamentPlugin implements Plugin
 {
     protected SettingRepository $settingRepository;
     protected array $settings = [];
-    protected static bool $registered = false;
 
     public function __construct(SettingRepository $settingRepository)
     {
@@ -27,23 +26,14 @@ class PWAFilamentPlugin implements Plugin
 
     public function register(Panel $panel): void
     {
-        if (static::$registered) {
-            return;
-        }
-
-        if (!$this->isEnabled()) {
-            return;
-        }
-
-        // Register the settings resource
+        // Register the settings resource even when PWA output is disabled.
+        // Resource routes must not depend on runtime database settings.
         $panel->resources([
             PwaSettingsResource::class,
         ]);
 
         // Register render hooks
         $this->registerRenderHooks($panel);
-
-        static::$registered = true;
     }
 
     public function boot(Panel $panel): void

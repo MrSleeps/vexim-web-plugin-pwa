@@ -4,11 +4,9 @@ namespace VEximweb\Plugin\PWA\Filament\Resources;
 
 use BackedEnum;
 use Filament\Resources\Resource;
-use Filament\Schemas\Schema;
 use Filament\Support\Icons\Heroicon;
-use VEximweb\Plugin\PWA\Filament\Resources\PwaSettingsResource\Schemas\SettingForm;
 use VEximweb\Plugin\PWA\Filament\Resources\PwaSettingsResource\Pages\EditPWASettings;
-use VVEximweb\Plugin\PWA\Models\PWASettings;
+use VEximweb\Plugin\PWA\Models\PWASettings;
 use VEximweb\Core\Data\Repositories\SettingRepository;
 
 
@@ -58,11 +56,6 @@ class PwaSettingsResource extends Resource
             return str_starts_with($key, 'pwa_');
         }, ARRAY_FILTER_USE_KEY);
     }    
-    
-    public static function form(Schema $schema): Schema
-    {
-        return SettingForm::configure($schema);
-    }
 
     public static function getPages(): array
     {

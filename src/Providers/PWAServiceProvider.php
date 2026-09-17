@@ -27,15 +27,9 @@ class PWAServiceProvider extends ServiceProvider
                 return;
             }
 
-            // Resolve settings lazily inside the closure — this runs later,
-            // when Filament actually constructs the panel, so it's safe even
-            // if config/DB state isn't fully ready during our own register().
+            // Resource routes must always be registered. pwa_enabled controls
+            // runtime PWA output, not whether the settings route exists.
             $settingRepository = $this->app->make(SettingRepository::class);
-
-            if (!filter_var($settingRepository->get('pwa_enabled', true), FILTER_VALIDATE_BOOLEAN)) {
-                \Log::info('PWA: PWA is disabled, skipping plugin registration');
-                return;
-            }
 
             $panel->plugin(new PWAFilamentPlugin($settingRepository));
         });
